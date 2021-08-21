@@ -97,14 +97,12 @@ macro_rules! once_escaping(
             pub unsafe fn new<F>(f: F) -> Self where F: FnOnce($($A),*) -> $R + Send + 'static {
                 //This thunk is safe to call from C
                 extern "C" fn invoke_thunk<G>(block: *mut blocksr::hidden::BlockLiteralOnce, $($a : $A),*) -> $R where G: FnOnce($($A),*) -> $R + Send {
-                    eprintln!("invoke_thunk");
                     let typed_ptr: *mut G = unsafe{ (*block).closure as *mut G};
                     let rust_fn = unsafe{ Box::from_raw(typed_ptr)};
                     rust_fn($($a),*)
                     //drop box
                 }
                 let boxed = Box::new(f);
-                eprintln!("made boxed {:p}",boxed);
                 let thunk_fn: *const core::ffi::c_void = invoke_thunk::<F> as *const core::ffi::c_void;
                 let literal = blocksr::hidden::BlockLiteralOnce {
                     isa: &blocksr::hidden::_NSConcreteStackBlock,
