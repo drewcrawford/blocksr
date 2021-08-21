@@ -1,5 +1,7 @@
 extern crate self as blocksr;
 mod once;
+#[cfg(feature="continuation")]
+pub mod continuation;
 
 #[doc(hidden)]
 pub mod hidden {

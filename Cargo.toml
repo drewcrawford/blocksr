@@ -4,5 +4,11 @@ version = "0.1.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+# A Rust version of Swift continuations, assisting with the writing of async bindings
+continuation = []
 
 [dependencies]
+
+[dev-dependencies]
+kiruna = {path = "../kiruna",features=["test"]}
