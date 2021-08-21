@@ -16,7 +16,6 @@ use std::task::{Context, Poll, Waker};
 use std::future::Future;
 use std::sync::{Mutex, Arc};
 use std::hint::unreachable_unchecked;
-use std::marker::PhantomPinned;
 
 ///The shared part of a [Completer], internal implementation type
 ///
@@ -106,7 +105,7 @@ impl<Result> InternalCompleter<Result> {
     }
 }
 
-struct ThreadsafeCompleter<Result>(Mutex<InternalCompleter<Result>>,PhantomPinned);
+struct ThreadsafeCompleter<Result>(Mutex<InternalCompleter<Result>>);
 
 ///Completer is a type upon which you can call [Completer::complete] to provide the result of the continuation.
 ///
@@ -145,13 +144,19 @@ impl<Accepted,Result> Continuation<Accepted,Result> {
     /// This returns a tuple of (Continuation,Completer).  The Continuation can be awaited,
     /// the completer can be `.completed()`.  These operations may happen in any order.
     ///
-    ///
+    /// This type allows you to implement an async fn that wraps some block-based (or thread-based) API.  Here's
+    /// a simple example:
     /// ```
     /// use blocksr::continuation::Continuation;
     /// async fn example() -> u8 {
-    ///     let (mut continuation,completer) = Continuation::new();
-    ///     continuation.accept(10);
-    ///     completer.complete(23);
+    ///     //specifying types here lets us skip calling `accept`.  For more details, see docs
+    ///     let (mut continuation,completer) = Continuation::<(),u8>::new();
+    ///     //on another thread...
+    ///     std::thread::spawn(||
+    ///         //complete the continuation
+    ///         completer.complete(23)
+    ///     );
+    ///     //back in the calling thread, await the continuation
     ///     continuation.await
     /// }
     /// ```
@@ -159,7 +164,6 @@ impl<Accepted,Result> Continuation<Accepted,Result> {
        let continuation = Continuation {
             completer: Completer(Arc::new(ThreadsafeCompleter(
                 Mutex::new(InternalCompleter::NotPolled),
-                PhantomPinned::default()
             ))),
            accepted: None
         };
@@ -168,7 +172,7 @@ impl<Accepted,Result> Continuation<Accepted,Result> {
     }
     ///Causes the value specified to be moved inside the future.  The effect of this is that
     /// if the future is dropped, the value accepted will be dropped as well.  This lets you implement
-    /// implicit cancelling by implementing Drop on some type.
+    /// implicit cancelling by implementing Drop on some type and passing it in here.
     ///
     pub fn accept(&mut self, value: Accepted) {
         self.accepted = Some(value);
