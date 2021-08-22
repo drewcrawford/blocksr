@@ -109,7 +109,7 @@ struct ThreadsafeCompleter<Result>(Mutex<InternalCompleter<Result>>);
 
 ///Completer is a type upon which you can call [Completer::complete] to provide the result of the continuation.
 ///
-/// To get a copy of this type, call [Completion::completer].
+/// To get a copy of this type, call [Continuation::new].
 //- note: This needs to be Arc because the future can be dropped before it completes, in which case
 // we don't especially care about the result but we still want a consistent answer
 pub struct Completer<Result>(Arc<ThreadsafeCompleter<Result>>);
