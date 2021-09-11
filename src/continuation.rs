@@ -3,13 +3,43 @@ Continuations help bind completion-based code into Rust async fns.  The intent
 here is to work with block-based completion APIs, as that is a typical problem,
 but the solution is by no means limited to that scope.
 
-This module is spiritually similar to the idea in [SE-0300](https://github.com/apple/swift-evolution/blob/main/proposals/0300-continuation.md).
+This is similar to (and informed by) Apple's own Swift bridge for async methods, with broad compatability across
+real-world Apple APIs. Compare to the idea in [SE-0300](https://github.com/apple/swift-evolution/blob/main/proposals/0300-continuation.md).
 Basically, we have this [Continuation] type, which implements the language async stuff and you can return it or await on it.
 That [Continuation] can then be 'completed' (what Swift calls 'resumed') explicitly.
 This lets you capture the result from some completion block.
 
 That highlevel picture is the same, although there are various details specific to an efficient Rust implementation.
 
+This Rust version is self-contained, 200 lines, does not depend on Tokio and is tested against other async runtimes.
+
+# Note to bindings authors
+
+As a practical matter, you may wish to avoid declaring async fns directly, and either ship both `impl Future`  and completion-handler
+versions as options, or only the completion-handler version and push the problem onto callers to use their own continuations.
+
+The reason is that bindings generally involve an autoreleasepool as an argument
+
+```compile_fail
+async fn my_binding(pool: objr::&ActiveAutoreleasePool) -> u8;
+
+//that is,
+fn my_binding<'a>(pool: objr::&'a ActiveAutoreleasePool) -> impl Future<Output=u8> + 'a
+```
+
+This has a few weird implications:
+1.  First, Rust checks you maintain the autoreleasepool across the suspension point, when that is not actually required
+    and doing that may be challenging or create poor performance for some applications
+2.  Second, since autorelease pools are thread-local, they are not [core::marker::Send] whereas
+    usually we expect [std::future::Future]s to be sent to other threads.
+3.  Third, since suspend/resume is essentially unordered, this may cause autoreleasepools not to be
+    popped in pushed order, which is incorrect.
+
+In my experience, there's usually not enough information to solve this at the bindings level, but it's easily
+solved at some higher level.  For example, an application may have a strong intuition about whether to use a pool-per-completion
+or not based on size of tasks, configuration of target queue, or other factors.
+
+That said, I'm not the design police and there probably are good reasons to do it in some circumstances.
 */
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
