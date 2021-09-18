@@ -62,7 +62,7 @@ pub mod continuation;
 
 #[doc(hidden)]
 pub mod hidden {
-    pub use super::once::{BlockLiteralOnce,BlockDescriptorOnce,_NSConcreteStackBlock,BLOCK_DESCRIPTOR_ONCE,BLOCK_HAS_STRET};
+    pub use super::once::{BlockLiteralEscape, BlockDescriptorOnce, _NSConcreteStackBlock, BLOCK_DESCRIPTOR_ONCE, BLOCK_HAS_STRET,BLOCK_IS_GLOBAL, BLOCK_IS_NOESCAPE,BlockLiteralNoEscape};
 }
 
 

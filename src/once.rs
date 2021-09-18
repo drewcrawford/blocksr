@@ -1,5 +1,6 @@
 use std::os::raw::{c_int,c_ulong};
 use std::ffi::c_void;
+use std::marker::PhantomPinned;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -18,7 +19,7 @@ pub struct BlockDescriptorOnce {
 #[repr(C)]
 #[derive(Debug)]
 #[doc(hidden)]
-pub struct BlockLiteralOnce {
+pub struct BlockLiteralEscape {
     pub isa: *const c_void,
     pub flags: c_int,
     pub reserved: c_int,
@@ -38,8 +39,10 @@ pub struct BlockLiteralOnce {
 
 pub static mut BLOCK_DESCRIPTOR_ONCE: blocksr::hidden::BlockDescriptorOnce = BlockDescriptorOnce {
     reserved: 0, //unsafe{std::mem::MaybeUninit::uninit().assume_init()} is unstable as const fn
-    size: std::mem::size_of::<blocksr::hidden::BlockLiteralOnce>() as u64,
+    size: std::mem::size_of::<blocksr::hidden::BlockLiteralEscape>() as u64,
 };
+
+
 
 /**
 Declares a block that escapes and executes once.  this is a typical pattern for completion handlers.
@@ -81,7 +84,7 @@ macro_rules! once_escaping(
         //must be ffi-safe
         #[repr(transparent)]
         #[derive(Debug)]
-        $pub struct $blockname(blocksr::hidden::BlockLiteralOnce);
+        $pub struct $blockname(blocksr::hidden::BlockLiteralEscape);
         impl $blockname {
             ///Creates a new escaping block.
             ///
@@ -96,7 +99,7 @@ macro_rules! once_escaping(
             /// The resulting block type is FFI-safe.  Typically, you pass a pointer to the block type (e.g., on the stack) into objc.
             pub unsafe fn new<F>(f: F) -> Self where F: FnOnce($($A),*) -> $R + Send + 'static {
                 //This thunk is safe to call from C
-                extern "C" fn invoke_thunk<G>(block: *mut blocksr::hidden::BlockLiteralOnce, $($a : $A),*) -> $R where G: FnOnce($($A),*) -> $R + Send {
+                extern "C" fn invoke_thunk<G>(block: *mut blocksr::hidden::BlockLiteralEscape, $($a : $A),*) -> $R where G: FnOnce($($A),*) -> $R + Send {
                     let typed_ptr: *mut G = unsafe{ (*block).closure as *mut G};
                     let rust_fn = unsafe{ Box::from_raw(typed_ptr)};
                     rust_fn($($a),*)
@@ -104,7 +107,7 @@ macro_rules! once_escaping(
                 }
                 let boxed = Box::new(f);
                 let thunk_fn: *const core::ffi::c_void = invoke_thunk::<F> as *const core::ffi::c_void;
-                let literal = blocksr::hidden::BlockLiteralOnce {
+                let literal = blocksr::hidden::BlockLiteralEscape {
                     isa: &blocksr::hidden::_NSConcreteStackBlock,
                     flags: blocksr::hidden::BLOCK_HAS_STRET,
                     reserved: std::mem::MaybeUninit::uninit().assume_init(),
@@ -120,9 +123,130 @@ macro_rules! once_escaping(
     }
 );
 
+#[repr(C)]
+#[derive(Debug)]
+#[doc(hidden)]
+pub struct BlockLiteralNoEscape<C> {
+    pub isa: *const c_void,
+    pub flags: c_int,
+    pub reserved: c_int,
+    //first arg to this fn ptr is &block_literal_1
+    pub invoke: *const c_void,
+    //in this situation, this points to the next field (struct is self-referential)
+    pub descriptor: *mut BlockDescriptorOnce,
+    //just put the descriptor on the stack!  mwahahaha
+    pub inline_descriptor: BlockDescriptorOnce,
+    //closure stored inline for this situation
+    pub closure_inline: C,
+    pub pinned: PhantomPinned,
+}
 
+/**
+Declares a block that doesn't escape and executes once.  this is a typical pattern for `dispatch_sync`.
 
+In this case we try to store the block on the stack.  To accomplish this, the block must be pinned.
 
+Here's a complete example:
+
+```
+    use core::pin::Pin;
+    use core::mem::MaybeUninit;
+    use blocksr::once_noescape;
+    //declare our block type
+    once_noescape!(MyBlock(arg: u8) -> u8);
+
+    //put block value on the stack
+    let mut block_value = MaybeUninit::uninit();
+    //pin to the stack.  By using the same variable name here, we guarantee that the original value cannot be moved
+    //because there's no longer any way to access it
+    let block_value = unsafe{ Pin::new_unchecked(&mut block_value) };
+
+    //Initialize the block.  The argument here is uninitialized memory, and we return an initialized pointer to the same memory.
+    let _f = unsafe { MyBlock::new(block_value, |_arg| {
+        3
+    }) };
+    //pass _f somewhere...
+```
+
+`::new()` is declared unsafe.
+
+# Safety
+
+You must verify that
+ * Arguments and return types are correct and in the expected order
+     * Arguments and return types are FFI-safe (compiler usually warns)
+ * Block will execute at most once:
+     * If ObjC executes the block several times, it's UB
+
+The resulting block type is FFI-safe.  Typically, you pass a pointer to the block type (e.g., on the stack) into objc.
+Typically, you want to declare the pointer type `Arguable` in objr to pass it into objc, e.g.
+
+```ignore
+once_noescape!(MyBlock(data: *const NSData) -> ());
+unsafe impl Arguable for &DataTaskCompletionHandler {}
+```
+ */
+#[macro_export]
+macro_rules! once_noescape(
+
+    (
+        $pub:vis $blockname: ident ($($a:ident : $A:ty),*) -> $R:ty
+    ) => {
+        //must be ffi-safe
+        #[repr(transparent)]
+        #[derive(Debug)]
+        $pub struct $blockname<F>(blocksr::hidden::BlockLiteralNoEscape<F>);
+        impl<F> $blockname<F> {
+            ///Creates a new escaping block.
+            ///
+            /// # Safety
+            /// You must verify that
+            //  * Arguments and return types are correct and in the expected order
+            //      * Arguments and return types are FFI-safe (compiler usually warns)
+            //  * Block will execute at most once:
+            //      * If ObjC executes the block several times, it's UB
+            ///
+            /// The resulting block type is FFI-safe.  Typically, you pass a pointer to the block type (e.g., on the stack) into objc.
+            pub unsafe fn new<'a>(into: core::pin::Pin<&'a mut core::mem::MaybeUninit<Self>>, f: F) -> core::pin::Pin<&'a Self> where F: FnOnce($($A),*) -> $R + Send {
+                use blocksr::hidden::BlockLiteralNoEscape;
+                use core::mem::MaybeUninit;
+                use core::pin::Pin;
+                //This thunk is safe to call from C
+                extern "C" fn invoke_thunk<G>(block: *mut BlockLiteralNoEscape<G>, $($a : $A),*) -> $R where G: FnOnce($($A),*) -> $R + Send {
+                    use core::mem::MaybeUninit;
+                    let mut closure: G = unsafe{ MaybeUninit::uninit().assume_init() };
+                    std::mem::swap(unsafe{&mut (*block).closure_inline}, &mut closure);
+                    closure($($a),*)
+                    //drop box
+                }
+                let thunk_fn: *const core::ffi::c_void = invoke_thunk::<F> as *const core::ffi::c_void;
+                let mut literal = BlockLiteralNoEscape {
+                    isa: &blocksr::hidden::_NSConcreteStackBlock,
+                    flags: blocksr::hidden::BLOCK_HAS_STRET,
+                    reserved: std::mem::MaybeUninit::uninit().assume_init(),
+                    invoke: thunk_fn ,
+                    descriptor: std::ptr::null_mut(),
+                    inline_descriptor: blocksr::hidden::BlockDescriptorOnce {
+                        reserved: 0, //seems defined as NULL
+                        size: std::mem::size_of::<BlockLiteralNoEscape<F>>() as u64
+                    },
+                    closure_inline: f,
+                    pinned: std::marker::PhantomPinned,
+                };
+                //fixup self-referential pointer
+                literal.descriptor = &mut literal.inline_descriptor;
+                //should be ok because we are initializing the object
+                let magic_ptr = into.get_unchecked_mut();
+                *magic_ptr  = MaybeUninit::new($blockname(literal));
+                //tell rust we're not worried about returning a temporary
+                let raw_ptr: *const Self = magic_ptr.assume_init_ref();
+                Pin::new_unchecked(&*raw_ptr)
+            }
+
+        }
+
+    }
+);
 
 extern {
     #[doc(hidden)]
@@ -131,6 +255,11 @@ extern {
 
 #[doc(hidden)]
 pub const BLOCK_HAS_STRET: c_int = 1<<29;
+#[doc(hidden)]
+pub const BLOCK_IS_NOESCAPE: c_int = 1<<23;
+
+#[doc(hidden)]
+pub const BLOCK_IS_GLOBAL: c_int = 1<<28;
 
 
 #[test] fn make_escape() {
@@ -138,4 +267,18 @@ pub const BLOCK_HAS_STRET: c_int = 1<<29;
     let _f = unsafe{ MyBlock::new(|_arg| {
         3
     })};
+}
+
+#[test] fn make_noescape() {
+    use core::pin::Pin;
+    use std::mem::MaybeUninit;
+    let mut block_value = MaybeUninit::uninit();
+    let block_value = unsafe{ Pin::new_unchecked(&mut block_value) };
+
+    once_noescape!(MyBlock(arg: u8) -> u8);
+    let _f = unsafe { MyBlock::new(block_value, |_arg| {
+        3
+    })
+
+    };
 }
