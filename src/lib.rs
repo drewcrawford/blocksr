@@ -4,7 +4,7 @@
 This is my Rust crate for using [blocks](https://en.wikipedia.org/wiki/Blocks_(C_language_extension)), the Apple C extension
 often used with ObjC.  This crate may be compared with the more popular [block](https://crates.io/crates/block) crate.
 
-This crate is part of the [objr universe](https://github.com/drewcrawford/objr) which provide low-level, zero-cost abstractions
+This crate is part of the [objr expanded universe universe](https://github.com/drewcrawford/objr#objr-expanded-universe) which provide low-level, zero-cost abstractions
 for Apple platform features that mimic code from first-party compilers.  Distinctive features of this library include:
 
 * Every block is a distinct newtype, creating a richer typesystem that unlocks new compile-time optimizations
