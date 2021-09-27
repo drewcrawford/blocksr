@@ -11,4 +11,4 @@ continuation = []
 [dependencies]
 
 [dev-dependencies]
-kiruna = {path = "../kiruna",features=["test"]}
+kiruna = {git = "https://github.com/drewcrawford/kiruna.git",features=["test"]}
