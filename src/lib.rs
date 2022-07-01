@@ -56,13 +56,17 @@ mod f {
 
 */
 extern crate self as blocksr;
+extern crate core;
+
 mod once;
 #[cfg(feature="continuation")]
 pub mod continuation;
+mod many;
 
 #[doc(hidden)]
 pub mod hidden {
-    pub use super::once::{BlockLiteralEscape, BlockDescriptorOnce, _NSConcreteStackBlock, BLOCK_DESCRIPTOR_ONCE, BLOCK_HAS_STRET,BLOCK_IS_GLOBAL, BLOCK_IS_NOESCAPE,BlockLiteralNoEscape};
+    pub use super::once::{BlockLiteralOnceEscape, BlockDescriptorOnce, _NSConcreteStackBlock, BLOCK_DESCRIPTOR_ONCE, BLOCK_HAS_STRET, BLOCK_HAS_COPY_DISPOSE, BLOCK_IS_GLOBAL, BLOCK_IS_NOESCAPE, BlockLiteralNoEscape};
+    pub use super::many::{BlockDescriptorMany,BlockLiteralManyEscape,Payload,BLOCK_DESCRIPTOR_MANY};
 }
 
 

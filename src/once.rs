@@ -19,7 +19,7 @@ pub struct BlockDescriptorOnce {
 #[repr(C)]
 #[derive(Debug)]
 #[doc(hidden)]
-pub struct BlockLiteralEscape {
+pub struct BlockLiteralOnceEscape {
     pub isa: *const c_void,
     pub flags: c_int,
     pub reserved: c_int,
@@ -39,7 +39,7 @@ pub struct BlockLiteralEscape {
 
 pub static mut BLOCK_DESCRIPTOR_ONCE: blocksr::hidden::BlockDescriptorOnce = BlockDescriptorOnce {
     reserved: 0, //unsafe{std::mem::MaybeUninit::uninit().assume_init()} is unstable as const fn
-    size: std::mem::size_of::<blocksr::hidden::BlockLiteralEscape>() as u64,
+    size: std::mem::size_of::<blocksr::hidden::BlockLiteralOnceEscape>() as u64,
 };
 
 
@@ -84,7 +84,7 @@ macro_rules! once_escaping(
         //must be ffi-safe
         #[repr(transparent)]
         #[derive(Debug)]
-        $pub struct $blockname(blocksr::hidden::BlockLiteralEscape);
+        $pub struct $blockname(blocksr::hidden::BlockLiteralOnceEscape);
         impl $blockname {
             ///Creates a new escaping block.
             ///
@@ -99,7 +99,7 @@ macro_rules! once_escaping(
             /// The resulting block type is FFI-safe.  Typically, you pass a pointer to the block type (e.g., on the stack) into objc.
             pub unsafe fn new<F>(f: F) -> Self where F: FnOnce($($A),*) -> $R + Send + 'static {
                 //This thunk is safe to call from C
-                extern "C" fn invoke_thunk<G>(block: *mut blocksr::hidden::BlockLiteralEscape, $($a : $A),*) -> $R where G: FnOnce($($A),*) -> $R + Send {
+                extern "C" fn invoke_thunk<G>(block: *mut blocksr::hidden::BlockLiteralOnceEscape, $($a : $A),*) -> $R where G: FnOnce($($A),*) -> $R + Send {
                     let typed_ptr: *mut G = unsafe{ (*block).closure as *mut G};
                     let rust_fn = unsafe{ Box::from_raw(typed_ptr)};
                     rust_fn($($a),*)
@@ -107,7 +107,7 @@ macro_rules! once_escaping(
                 }
                 let boxed = Box::new(f);
                 let thunk_fn: *const core::ffi::c_void = invoke_thunk::<F> as *const core::ffi::c_void;
-                let literal = blocksr::hidden::BlockLiteralEscape {
+                let literal = blocksr::hidden::BlockLiteralOnceEscape {
                     isa: &blocksr::hidden::_NSConcreteStackBlock,
                     flags: blocksr::hidden::BLOCK_HAS_STRET,
                     reserved: std::mem::MaybeUninit::uninit().assume_init(),
@@ -255,6 +255,8 @@ extern {
 
 #[doc(hidden)]
 pub const BLOCK_HAS_STRET: c_int = 1<<29;
+#[doc(hidden)]
+pub const BLOCK_HAS_COPY_DISPOSE: c_int = 1 << 25;
 #[doc(hidden)]
 pub const BLOCK_IS_NOESCAPE: c_int = 1<<23;
 
