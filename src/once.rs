@@ -1,6 +1,7 @@
 use std::os::raw::{c_int,c_ulong};
 use std::ffi::c_void;
 use std::marker::PhantomPinned;
+use std::mem::MaybeUninit;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -22,7 +23,7 @@ pub struct BlockDescriptorOnce {
 pub struct BlockLiteralOnceEscape {
     pub isa: *const c_void,
     pub flags: c_int,
-    pub reserved: c_int,
+    pub reserved: MaybeUninit<c_int>,
     //first arg to this fn ptr is &block_literal_1
     pub invoke: *const c_void,
     pub descriptor: *mut BlockDescriptorOnce,
@@ -110,7 +111,7 @@ macro_rules! once_escaping(
                 let literal = blocksr::hidden::BlockLiteralOnceEscape {
                     isa: &blocksr::hidden::_NSConcreteStackBlock,
                     flags: blocksr::hidden::BLOCK_HAS_STRET,
-                    reserved: std::mem::MaybeUninit::uninit().assume_init(),
+                    reserved: std::mem::MaybeUninit::uninit(),
                     invoke: thunk_fn ,
                     descriptor: &mut blocksr::hidden::BLOCK_DESCRIPTOR_ONCE,
                     closure: Box::into_raw(boxed) as *mut core::ffi::c_void,
@@ -129,7 +130,7 @@ macro_rules! once_escaping(
 pub struct BlockLiteralNoEscape<C> {
     pub isa: *const c_void,
     pub flags: c_int,
-    pub reserved: c_int,
+    pub reserved: MaybeUninit<c_int>,
     //first arg to this fn ptr is &block_literal_1
     pub invoke: *const c_void,
     //in this situation, this points to the next field (struct is self-referential)
@@ -223,7 +224,7 @@ macro_rules! once_noescape(
                 let mut literal = BlockLiteralNoEscape {
                     isa: &blocksr::hidden::_NSConcreteStackBlock,
                     flags: blocksr::hidden::BLOCK_HAS_STRET,
-                    reserved: std::mem::MaybeUninit::uninit().assume_init(),
+                    reserved: std::mem::MaybeUninit::uninit(),
                     invoke: thunk_fn ,
                     descriptor: std::ptr::null_mut(),
                     inline_descriptor: blocksr::hidden::BlockDescriptorOnce {
