@@ -214,11 +214,16 @@ macro_rules! once_noescape(
                 use core::pin::Pin;
                 //This thunk is safe to call from C
                 extern "C" fn invoke_thunk<G>(block: *mut BlockLiteralNoEscape<G>, $($a : $A),*) -> $R where G: FnOnce($($A),*) -> $R + Send {
-                    use core::mem::MaybeUninit;
-                    let mut closure: G = unsafe{ MaybeUninit::uninit().assume_init() };
-                    std::mem::swap(unsafe{&mut (*block).closure_inline}, &mut closure);
-                    closure($($a),*)
-                    //drop box
+                    /*
+                    This should be safe because:
+                    * block is valid for reads
+                    * block ought to be properly aligned, initialized, etc.
+                    * nobody else is going to read block again; in particular we know that the thunk will be called once,
+                    there is no dispose handler, etc
+                     */
+                    let read_owned = unsafe{std::ptr::read(block)};
+                    (read_owned.closure_inline)($($a),*)
+                    //drop read_owned
                 }
                 let thunk_fn: *const core::ffi::c_void = invoke_thunk::<F> as *const core::ffi::c_void;
                 let mut literal = BlockLiteralNoEscape {
