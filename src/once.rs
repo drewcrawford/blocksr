@@ -196,6 +196,7 @@ macro_rules! once_noescape(
         //must be ffi-safe
         #[repr(transparent)]
         #[derive(Debug)]
+        #[allow(non_snake_case)] //ex nw_parameters_configure_protocol_block_t
         $pub struct $blockname<F>(blocksr::hidden::BlockLiteralNoEscape<F>);
         impl<F> $blockname<F> {
             ///Creates a new escaping block.
