@@ -85,6 +85,7 @@ macro_rules! once_escaping(
         //must be ffi-safe
         #[repr(transparent)]
         #[derive(Debug)]
+        #[allow(non_camel_case_types)] //ex nw_parameters_configure_protocol_block_t
         $pub struct $blockname(blocksr::hidden::BlockLiteralOnceEscape);
         impl $blockname {
             ///Creates a new escaping block.
