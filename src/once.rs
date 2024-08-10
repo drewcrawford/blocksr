@@ -113,7 +113,7 @@ macro_rules! once_escaping(
                     flags: blocksr::hidden::BLOCK_HAS_STRET,
                     reserved: std::mem::MaybeUninit::uninit(),
                     invoke: thunk_fn ,
-                    descriptor: &mut blocksr::hidden::BLOCK_DESCRIPTOR_ONCE,
+                    descriptor: core::ptr::addr_of_mut!(blocksr::hidden::BLOCK_DESCRIPTOR_ONCE),
                     closure: Box::into_raw(boxed) as *mut core::ffi::c_void,
                 };
                 $blockname(literal)
