@@ -65,7 +65,7 @@ pub struct BlockLiteralManyEscape {
     */
     pub payload: *mut c_void,
 
-    pub dispose: fn(*mut BlockLiteralManyEscape),
+    pub dispose: extern "C" fn(*mut BlockLiteralManyEscape),
 }
 
 /**
@@ -158,7 +158,7 @@ macro_rules! many_escaping_nonreentrant(
                     r
                 }
 
-                fn dispose_thunk<G,H>(block: *mut blocksr::hidden::BlockLiteralManyEscape) {
+                extern "C" fn dispose_thunk<G,H>(block: *mut blocksr::hidden::BlockLiteralManyEscape) {
                     let payload_ptr = unsafe{(*block).payload} as *mut _ as *mut blocksr::hidden::Payload<G,H>;
                     let mut boxed_payload: Box<blocksr::hidden::Payload<G,H>> = unsafe {Box::from_raw(payload_ptr)};
                     //drop
@@ -285,7 +285,7 @@ macro_rules! many_escaping_reentrant(
 
                 }
 
-                fn dispose_thunk<G,H>(block: *mut blocksr::hidden::BlockLiteralManyEscape) {
+                extern "C" fn dispose_thunk<G,H>(block: *mut blocksr::hidden::BlockLiteralManyEscape) {
                     let payload_ptr = unsafe{(*block).payload} as *mut _ as *mut blocksr::hidden::Payload<G,H>;
                     let mut boxed_payload: Box<blocksr::hidden::Payload<G,H>> = unsafe {Box::from_raw(payload_ptr)};
                     //drop
