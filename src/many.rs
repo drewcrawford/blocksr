@@ -89,7 +89,7 @@ You must verify that
  * Arguments and return types are correct and in the expected order
      * Arguments and return types are FFI-safe (compiler usually warns)
  * Function will not be called in a re-entrant manner.  I believe this is required for FnMut, although I have not proven it.
-   For re-entrant blocks, see [many_escaping_reentrant].
+   For re-entrant blocks, see [crate::many_escaping_reentrant].
 
 The resulting block type is FFI-safe.  Typically, you pass a pointer to the block type (e.g., on the stack) into objc.
 Typically, you want to declare the pointer type `Arguable` in objr to pass it into objc, e.g.
