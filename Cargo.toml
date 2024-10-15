@@ -1,8 +1,15 @@
 [package]
 name = "blocksr"
-version = "0.1.0"
+version = "1.0.0"
+authors = ["Drew Crawford <drew@sealedabstract.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
+description = "Drew's Rust library for (clang/objc) blocks"
+homepage = "https://sealedabstract.com/code/blocksr"
+repository = "https://github.com/drewcrawford/blocksr"
+keywords = ["objc", "macos", "ios", "blocks"]
+categories = ["asynchronous","concurrency","os::macos-apis"]
+exclude = [".*"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
