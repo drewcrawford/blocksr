@@ -32,35 +32,13 @@ let f = unsafe{ MyBlock::new(|_arg| {
 //pass f somewhere...
 ```
 
-## Continuations
-
-```
-//only available when enabled
-#[cfg(feature="continuation")]
-mod f {
-    use blocksr::continuation::Continuation;
-    async fn example() -> u8 {
-        //specifying types here lets us skip calling `accept()`.  For more details, see docs
-        let (mut continuation,completer) = Continuation::<(),u8>::new();
-        //on another thread...
-        std::thread::spawn(||
-            //complete the continuation
-            completer.complete(23)
-        );
-        //back in the calling thread, await the continuation
-        continuation.await
-    }
-}
-```
-
 
 */
 extern crate self as blocksr;
 extern crate core;
 
 mod once;
-#[cfg(feature="continuation")]
-pub mod continuation;
+
 mod many;
 
 #[doc(hidden)]
