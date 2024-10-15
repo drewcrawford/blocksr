@@ -14,10 +14,6 @@ for Apple platform features that mimic code from first-party compilers.  Distinc
     * C/ObjC is a giant ball of unsafe code, and most direct use of this crate is also unsafe.  Bindings authors are encouraged to wrap
       safe API based on their local knowledge.
     * Ergonomic macros for quickly binding new platform APIs
-* The `continuation` feature (off by default) bridges block-based completion handlers to Rust `async fn`s.
-    * This is similar to (and informed by) Apple's own Swift bridge for async methods, with broad compatability across
-      real-world Apple APIs.
-    * This Rust version is self-contained, 200 lines, does not depend on Tokio and is tested against other async runtimes.
 * Permissively licensed
 
 # Examples
