@@ -1,4 +1,6 @@
 # Drew's Rust library for (clang/objc) blocks.
+![logo](art/logo.png)
+
 
 This is my Rust crate for using [blocks](https://en.wikipedia.org/wiki/Blocks_(C_language_extension)), the Apple C extension
 often used with ObjC.  This crate may be compared with the more popular [block](https://crates.io/crates/block) crate.
