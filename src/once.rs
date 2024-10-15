@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 use std::os::raw::{c_int,c_ulong};
 use std::ffi::c_void;
 use std::marker::PhantomPinned;

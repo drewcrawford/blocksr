@@ -16,7 +16,7 @@ for Apple platform features that mimic code from first-party compilers.  Distinc
     * This is similar to (and informed by) Apple's own Swift bridge for async methods, with broad compatability across
       real-world Apple APIs.
     * This Rust version is self-contained, 200 lines, does not depend on Tokio and is tested against other async runtimes.
-* Free for noncommercial or "small commercial" use
+* Permissively licensed
 
 # Examples
 
@@ -54,24 +54,3 @@ let f = unsafe{ MyBlock::new(23, |environment| {
 
 The environment is dropped when the block is dropped, with assistance from the ObjC runtime.  This will occur
 sometime after the last execution.
-
-## Continuations
-
-```rust
-//only available when enabled
-#[cfg(feature="continuation")]
-mod f {
-    use blocksr::continuation::Continuation;
-    async fn example() -> u8 {
-        //specifying types here lets us skip calling `accept()`.  For more details, see docs
-        let (mut continuation,completer) = Continuation::<(),u8>::new();
-        //on another thread...
-        std::thread::spawn(||
-            //complete the continuation
-            completer.complete(23)
-        );
-        //back in the calling thread, await the continuation
-        continuation.await
-    }
-}
-```
